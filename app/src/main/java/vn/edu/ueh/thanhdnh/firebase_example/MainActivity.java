@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,7 +19,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
   FirebaseFirestore db;
   Button btAdd, btShow;
-  EditText etName, etPhone;
+  EditText etTitle, etContent, etImageUrl, etHobby;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -35,8 +36,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     db = FirebaseFirestore.getInstance();
     btAdd = findViewById(R.id.btAdd);
     btShow = findViewById(R.id.btShow);
-    etName = findViewById(R.id.etName);
-    etPhone = findViewById(R.id.etPhone);
+    etTitle = findViewById(R.id.etTitle);
+    etContent = findViewById(R.id.etContent);
+    etImageUrl = findViewById(R.id.etImageUrl);
+    etHobby = findViewById(R.id.etHobby);
+    
     btAdd.setOnClickListener(this);
     btShow.setOnClickListener(this);
   }
@@ -44,9 +48,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
   @Override
   public void onClick(View view) {
     if (view.getId() == R.id.btAdd) {
-      db.collection("users").add(new User(etName.getText().toString(), etPhone.getText().toString()));
-      etName.setText("");
-      etPhone.setText("");
+      String title = etTitle.getText().toString();
+      String content = etContent.getText().toString();
+      String imageUrl = etImageUrl.getText().toString();
+      String hobby = etHobby.getText().toString();
+      
+      if (title.isEmpty() || content.isEmpty()) {
+        Toast.makeText(this, "Please enter title and content", Toast.LENGTH_SHORT).show();
+        return;
+      }
+
+      String id = db.collection("articles").document().getId();
+      Article article = new Article(id, title, content, imageUrl, hobby);
+      
+      db.collection("articles").document(id).set(article)
+          .addOnSuccessListener(aVoid -> {
+              Toast.makeText(this, "Added successfully", Toast.LENGTH_SHORT).show();
+              etTitle.setText("");
+              etContent.setText("");
+              etImageUrl.setText("");
+              etHobby.setText("");
+          })
+          .addOnFailureListener(e -> Toast.makeText(this, "Error adding article", Toast.LENGTH_SHORT).show());
+
     } else if (view.getId() == R.id.btShow) {
       Intent intent = new Intent(getBaseContext(), ShowDataActivity.class);
       startActivity(intent);
