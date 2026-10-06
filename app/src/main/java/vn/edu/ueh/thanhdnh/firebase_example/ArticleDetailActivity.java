@@ -19,9 +19,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -30,6 +34,9 @@ public class ArticleDetailActivity extends AppCompatActivity {
     private ImageView imgArticle;
     private TextView txtTitle, txtHobby, txtContent;
     private ProgressBar progressBar;
+    private FirebaseFirestore db;
+    private ListenerRegistration listenerRegistration;
+    private String currentLoadedImageUrl = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,29 +64,65 @@ public class ArticleDetailActivity extends AppCompatActivity {
         txtContent = findViewById(R.id.txt_detail_content);
         progressBar = findViewById(R.id.detail_progress_bar);
 
-        Article article;
+        db = FirebaseFirestore.getInstance();
+
+        Article initialArticle;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            article = getIntent().getSerializableExtra("article", Article.class);
+            initialArticle = getIntent().getSerializableExtra("article", Article.class);
         } else {
-            article = (Article) getIntent().getSerializableExtra("article");
+            initialArticle = (Article) getIntent().getSerializableExtra("article");
         }
 
-        if (article != null) {
-            txtTitle.setText(article.getTitle());
-            txtContent.setText(article.getContent());
+        if (initialArticle != null) {
+            updateUI(initialArticle);
 
-            if (article.getHobby() != null && !article.getHobby().isEmpty()) {
-                txtHobby.setText("Sở thích / Chủ đề: " + article.getHobby());
-                txtHobby.setVisibility(View.VISIBLE);
-            } else {
-                txtHobby.setVisibility(View.GONE);
+            String articleId = initialArticle.getId();
+            if (articleId != null && !articleId.isEmpty()) {
+                setupRealtimeListener(articleId);
             }
+        }
+    }
 
-            if (article.getImageUrl() != null && !article.getImageUrl().isEmpty()) {
-                downloadWithProgress(article.getImageUrl());
-            } else {
-                imgArticle.setVisibility(View.GONE);
+    private void setupRealtimeListener(String articleId) {
+        listenerRegistration = db.collection("articles").document(articleId)
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null) {
+                        Log.e("ArticleDetail", "Lỗi lắng nghe realtime: " + error.getMessage());
+                        return;
+                    }
+                    if (snapshot != null && snapshot.exists()) {
+                        Article article = snapshot.toObject(Article.class);
+                        if (article != null) {
+                            if (article.getId() == null || article.getId().isEmpty()) {
+                                article.setId(snapshot.getId());
+                            }
+                            updateUI(article);
+                        }
+                    }
+                });
+    }
+
+    private void updateUI(Article article) {
+        txtTitle.setText(article.getTitle());
+        txtContent.setText(article.getContent());
+
+        if (article.getHobby() != null && !article.getHobby().isEmpty()) {
+            txtHobby.setText("Sở thích / Chủ đề: " + article.getHobby());
+            txtHobby.setVisibility(View.VISIBLE);
+        } else {
+            txtHobby.setVisibility(View.GONE);
+        }
+
+        String newImageUrl = article.getImageUrl();
+        if (newImageUrl != null && !newImageUrl.isEmpty()) {
+            imgArticle.setVisibility(View.VISIBLE);
+            if (!Objects.equals(currentLoadedImageUrl, newImageUrl)) {
+                currentLoadedImageUrl = newImageUrl;
+                downloadWithProgress(newImageUrl);
             }
+        } else {
+            currentLoadedImageUrl = null;
+            imgArticle.setVisibility(View.GONE);
         }
     }
 
@@ -120,5 +163,13 @@ public class ArticleDetailActivity extends AppCompatActivity {
                 }
             });
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (listenerRegistration != null) {
+            listenerRegistration.remove();
+        }
     }
 }

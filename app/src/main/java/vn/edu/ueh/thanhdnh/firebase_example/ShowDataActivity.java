@@ -54,6 +54,9 @@ public class ShowDataActivity extends AppCompatActivity {
                     articles.clear();
                     for (QueryDocumentSnapshot q : snapshots) {
                         Article article = q.toObject(Article.class);
+                        if (article.getId() == null || article.getId().isEmpty()) {
+                            article.setId(q.getId());
+                        }
                         articles.add(article);
                     }
                     adapter.update(articles);
