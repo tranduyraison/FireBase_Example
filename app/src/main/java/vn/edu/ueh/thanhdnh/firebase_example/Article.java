@@ -1,6 +1,8 @@
 package vn.edu.ueh.thanhdnh.firebase_example;
 
-public class Article {
+import java.io.Serializable;
+
+public class Article implements Serializable {
     private String id;
     private String title;
     private String content;

@@ -1,5 +1,7 @@
 package vn.edu.ueh.thanhdnh.firebase_example;
 
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
@@ -48,6 +50,13 @@ public class ArticleViewHolder extends RecyclerView.ViewHolder {
         if (article.getImageUrl() != null && !article.getImageUrl().isEmpty()) {
             downloadWithProgress(article.getImageUrl());
         }
+
+        itemView.setOnClickListener(v -> {
+            Context context = itemView.getContext();
+            Intent intent = new Intent(context, ArticleDetailActivity.class);
+            intent.putExtra("article", article);
+            context.startActivity(intent);
+        });
     }
 
     private void downloadWithProgress(String urlString) {
